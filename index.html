@@ -142,7 +142,8 @@ if (selectedTime < now) {
     phone,
     email,
     status: "pending",
-    rescheduledFrom: null
+    rescheduledFrom: null,
+    createdAt: new Date().toISOString(),
   });
 
   save();
@@ -167,15 +168,27 @@ function deleteApp(id) {
 }
 
 function markDone(id) {
-  appointments = appointments.map(a => {
-    if (a.id === id) a.status = "done";
-    return a;
+  let now = new Date();
+
+  appointments = appointments.filter(a => {
+    if (a.id === id) {
+
+      let apptTime = new Date(a.datetime);
+
+      // ❌ time শেষ না হলে done করা যাবে না
+      if (apptTime > now) {
+        alert("⛔ You cannot mark this as completed before the time is over!");
+        return true; // list এ থাকবে
+      }
+
+      return false; // done হলে delete হবে
+    }
+    return true;
   });
 
   save();
   render();
 }
-
 /* OPEN MODAL */
 function reschedule(id) {
   editId = id;
@@ -214,13 +227,16 @@ function closeModal() {
 function render() {
   let list = document.getElementById("list");
   list.innerHTML = "";
+    appointments.sort((a, b) => new Date(a.datetime) - new Date(b.datetime));
 
   appointments.forEach(a => {
-    let status = getStatus(a.datetime, a.status);
 
+  let status = getStatus(a.datetime, a.status); 
     list.innerHTML += `
       <div class="box">
         <h3>${a.title}</h3>
+
+        <p class="small">🕒 Added: ${formatDateTime(a.createdAt)}</p>
 
         <p>📅 ${formatDateTime(a.datetime)}</p>
 
@@ -228,6 +244,7 @@ function render() {
           `<p class="small">↩ Previous: ${formatDateTime(a.rescheduledFrom)}</p>` : ""}
 
         ${a.phone ? `<p>📱 ${a.phone}</p>` : ""}
+
         ${a.email ? `<p>📧 ${a.email}</p>` : ""}
 
         <p class="${status}">Status: ${status}</p>
@@ -242,6 +259,8 @@ function render() {
   });
 }
 function formatDateTime(dt) {
+  if (!dt) return "Not available";
+
   let date = new Date(dt);
 
   return date.toLocaleString("en-US", {
