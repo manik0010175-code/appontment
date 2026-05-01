@@ -154,6 +154,13 @@ if (selectedTime < now) {
 }
 
 function deleteApp(id) {
+  let pin = prompt("🔐 Enter PIN to delete:");
+
+  if (pin !== "1230") {
+    alert("❌ Wrong PIN! Delete blocked.");
+    return;
+  }
+
   appointments = appointments.filter(a => a.id !== id);
   save();
   render();
