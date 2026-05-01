@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Appointment Reminder App</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <style>
+    body {
+      font-family: Arial;
+      background: #f4f4f4;
+      padding: 10px;
+    }
+
+    .box {
+      background: white;
+      padding: 12px;
+      margin-bottom: 10px;
+      border-radius: 10px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+
+    input, button {
+      width: 100%;
+      padding: 10px;
+      margin-top: 5px;
+      margin-bottom: 5px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+      box-sizing: border-box;
+    }
+
+    button {
+      background: #007bff;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #0056b3;
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 5px;
+    }
+
+    .btn-row button {
+      flex: 1;
+    }
+
+    .pending { color: orange; }
+    .missed { color: red; }
+    .done { color: green; }
+
+    .small {
+      font-size: 12px;
+      color: gray;
+    }
+
+    /* MODAL */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.5);
+    }
+
+    .modal-content {
+      background: white;
+      padding: 15px;
+      margin: 20% auto;
+      width: 90%;
+      border-radius: 10px;
+    }
+  </style>
+</head>
+
+<body>
+
+<h2>📅 Appointment Reminder App</h2>
+
+<div class="box">
+  <input id="title" placeholder="Title">
+  <input id="datetime" type="datetime-local">
+  <input id="phone" placeholder="Mobile Number (optional)">
+  <input id="email" placeholder="Email (optional)">
+  <button onclick="addAppointment()">Add Appointment</button>
+</div>
+
+<div id="list"></div>
+
+<!-- RESCHEDULE MODAL -->
+<div class="modal" id="modal">
+  <div class="modal-content">
+    <h3>Reschedule Appointment</h3>
+    <input type="datetime-local" id="newDateTime">
+    <button onclick="saveReschedule()">Save</button>
+    <button onclick="closeModal()" style="background:red;">Cancel</button>
+  </div>
+</div>
+
+<script>
+
+let appointments = JSON.parse(localStorage.getItem("apps")) || [];
+let editId = null;
+
+function save() {
+  localStorage.setItem("apps", JSON.stringify(appointments));
+}
+
+function getStatus(time, status) {
+  if (status === "done") return "done";
+
+  let now = new Date();
+  let apptTime = new Date(time);
+
+  if (apptTime < now) return "missed";
+  return "pending";
+}
+
+function addAppointment() {
+  let title = document.getElementById("title").value;
+  let datetime = document.getElementById("datetime").value;
+  let phone = document.getElementById("phone").value;
+  let email = document.getElementById("email").value;
+
+  if (!title || !datetime) return alert("Title & Date required");
+
+  appointments.push({
+    id: Date.now(),
+    title,
+    datetime,
+    phone,
+    email,
+    status: "pending",
+    rescheduledFrom: null
+  });
+
+  save();
+  render();
+}
+
+function deleteApp(id) {
+  appointments = appointments.filter(a => a.id !== id);
+  save();
+  render();
+}
+
+function markDone(id) {
+  appointments = appointments.map(a => {
+    if (a.id === id) a.status = "done";
+    return a;
+  });
+
+  save();
+  render();
+}
+
+/* OPEN MODAL */
+function reschedule(id) {
+  editId = id;
+  document.getElementById("modal").style.display = "block";
+}
+
+/* SAVE NEW DATE FROM CALENDAR */
+function saveReschedule() {
+  let newDate = document.getElementById("newDateTime").value;
+
+  if (!newDate) return alert("Select date & time");
+
+  appointments = appointments.map(a => {
+    if (a.id === editId) {
+      a.rescheduledFrom = a.datetime;
+      a.datetime = newDate;
+      a.status = "pending";
+    }
+    return a;
+  });
+
+  save();
+  closeModal();
+  render();
+}
+
+function closeModal() {
+  document.getElementById("modal").style.display = "none";
+}
+
+/* RENDER */
+function render() {
+  let list = document.getElementById("list");
+  list.innerHTML = "";
+
+  appointments.forEach(a => {
+    let status = getStatus(a.datetime, a.status);
+
+    list.innerHTML += `
+      <div class="box">
+        <h3>${a.title}</h3>
+
+        <p>📅 ${a.datetime}</p>
+
+        ${a.rescheduledFrom ? 
+          `<p class="small">↩ Previous: ${a.rescheduledFrom}</p>` : ""}
+
+        ${a.phone ? `<p>📱 ${a.phone}</p>` : ""}
+        ${a.email ? `<p>📧 ${a.email}</p>` : ""}
+
+        <p class="${status}">Status: ${status}</p>
+
+        <div class="btn-row">
+          <button onclick="markDone(${a.id})">Done</button>
+          <button onclick="reschedule(${a.id})">Reschedule</button>
+          <button onclick="deleteApp(${a.id})">Delete</button>
+        </div>
+      </div>
+    `;
+  });
+}
+
+render();
+
+</script>
+
+</body>
+</html>
