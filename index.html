@@ -82,6 +82,8 @@
 
 <h2>📅 Appointment Reminder App</h2>
 
+<p id="todayDate" class="small"></p>
+
 <div class="box">
   <input id="title" placeholder="Title">
   <input id="datetime" type="datetime-local">
@@ -102,7 +104,26 @@
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/emailjs-com@3/dist/email.min.js"></script>
+
 <script>
+  emailjs.init("EZA-P58DMmmc8TEln");
+</script>
+
+<script>
+
+  function showTodayDate() {
+  let now = new Date();
+
+  let formatted = now.toLocaleDateString("en-US", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric"
+  });
+
+  document.getElementById("todayDate").innerText = "📅 Today: " + formatted;
+}
 
 let appointments = JSON.parse(localStorage.getItem("apps")) || [];
 let editId = null;
@@ -144,6 +165,7 @@ if (selectedTime < now) {
     status: "pending",
     rescheduledFrom: null,
     createdAt: new Date().toISOString(),
+    notified: false,
   });
 
   save();
@@ -228,9 +250,22 @@ function render() {
   let list = document.getElementById("list");
   list.innerHTML = "";
     appointments.sort((a, b) => new Date(a.datetime) - new Date(b.datetime));
+appointments.forEach(a => {
 
-  appointments.forEach(a => {
+  let now = new Date();
+  let apptTime = new Date(a.datetime);
 
+  if (
+  typeof sendEmail === "function" &&
+  !a.notified &&
+  apptTime - now < 60000 &&
+  apptTime > now &&
+  a.email
+) {
+  sendEmail(a);
+  a.notified = true;
+  save();
+}
   let status = getStatus(a.datetime, a.status); 
     list.innerHTML += `
       <div class="box">
@@ -274,6 +309,21 @@ function formatDateTime(dt) {
 }
 render();
 setInterval(render, 60000);
+
+showTodayDate();  
+setInterval(showTodayDate, 60000);
+
+</script>
+
+<script>
+
+function sendEmail(app) {
+  emailjs.send("service_zq1fa8p", "template_73ezfa9", {
+    title: app.title,
+    time: app.datetime,
+    email: app.email
+  });
+}
 
 </script>
 
